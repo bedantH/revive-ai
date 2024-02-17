@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { text } from "body-parser";
 
-const genAI = new GoogleGenerativeAI("AIzaSyDCxmNirtIyKTIeqRQCc7vTyGG7Z_ZO8Io");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 let location = "Panvel, Maharashtra";
 
 export function fileToGenerativePart(
