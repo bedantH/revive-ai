@@ -21,7 +21,6 @@ const scanSchema = new mongoose.Schema(
     },
     how_desc: {
       type: String,
-      required: true,
     },
   },
   { timestamps: true }

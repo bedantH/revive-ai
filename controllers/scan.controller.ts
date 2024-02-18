@@ -1,10 +1,18 @@
 import Scan from "../models/scan.model";
 
-export async function createScan(userId: string, object: string, result: any) {
+export async function createScan(
+  userId: string,
+  object: string,
+  result: any,
+  is_completed: boolean,
+  how_desc: string
+) {
   const scan = new Scan({
     user: userId,
     object,
     result,
+    is_completed,
+    how_desc,
   });
 
   return scan.save();

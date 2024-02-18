@@ -7,6 +7,77 @@ import {
 
 import jwt from "jsonwebtoken";
 
+export async function register(
+  req: Request,
+  res: Response,
+  next?: NextFunction
+) {
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({
+      message: "Invalid input",
+      status: "failed",
+      code: 400,
+    });
+  }
+
+  let existingUser;
+  try {
+    existingUser = await getUserByEmail(email);
+  } catch (error) {
+    return res.status(500).json({
+      message: "Signup failed, please try again later.",
+      status: "failed",
+      code: 500,
+    });
+  }
+
+  if (existingUser) {
+    return res.status(422).json({
+      message: "User exists already, please login instead.",
+      status: "failed",
+      code: 422,
+    });
+  }
+
+  const newUser = await createUser(name, email, password);
+
+  const token = jwt.sign(
+    {
+      user: newUser,
+    },
+    process.env.JWT_KEY as string,
+    {
+      expiresIn: "1h",
+    }
+  );
+  const refreshToken = jwt.sign(
+    {
+      user: newUser,
+    },
+    process.env.JWT_KEY as string,
+    {
+      expiresIn: "1h",
+    }
+  );
+
+  res
+    .cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+    })
+    .cookie("token", token, {
+      httpOnly: true,
+    })
+    .header("Authorization", `Bearer ${token}`)
+    .status(201)
+    .json({
+      userId: newUser.id,
+      email: newUser.email,
+      token,
+    });
+}
+
 export async function login(req: Request, res: Response, next?: NextFunction) {
   const { email, password } = req.body;
 
@@ -48,41 +119,28 @@ export async function login(req: Request, res: Response, next?: NextFunction) {
     });
   }
 
-  let token;
-  let refreshToken;
-  try {
-    token = jwt.sign(
-      {
-        userId: existingUser.id,
-        email: existingUser.email,
-      },
-      process.env.JWT_KEY as string,
-      {
-        expiresIn: "1h",
-      }
-    );
-    refreshToken = jwt.sign(
-      {
-        userId: existingUser.id,
-        email: existingUser.email,
-      },
-      process.env.JWT_KEY as string,
-      {
-        expiresIn: "1h",
-      }
-    );
-  } catch (err) {
-    return res.status(500).json({
-      message: "Logging in failed, please try again later.",
-      status: "failed",
-      code: 500,
-    });
-  }
+  const token = jwt.sign(
+    {
+      user: existingUser,
+    },
+    process.env.JWT_KEY as string,
+    { expiresIn: "1h" }
+  );
+
+  const refreshToken = jwt.sign(
+    {
+      user: existingUser,
+    },
+    process.env.JWT_KEY as string,
+    { expiresIn: "1h" }
+  );
 
   res
     .cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      sameSite: "strict",
+    })
+    .cookie("token", token, {
+      httpOnly: true,
     })
     .header("Authorization", `Bearer ${token}`)
     .status(200)
@@ -106,7 +164,7 @@ export async function refresh(
   res: Response,
   next?: NextFunction
 ) {
-  const refreshToken = req.cookies["refreshToken"];
+  const refreshToken = req.cookies?.["refreshToken"];
   if (!refreshToken) {
     return res.status(401).send("Access Denied. No refresh token provided.");
   }
@@ -140,19 +198,10 @@ export async function refresh(
   }
 }
 
-export async function getMe(req: Request, res: Response, next?: NextFunction) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+export async function getMe(req: Request, res: Response) {
+  const token = req.cookies.token;
 
-  if (!token) {
-    return res.status(401).json({
-      message: "Unauthorized",
-      status: "failed",
-      code: 401,
-    });
-  }
-
-  jwt.verify(token, process.env.JWT_KEY as string, (err, user) => {
+  jwt.verify(token, process.env.JWT_KEY as string, (err: any, user: any) => {
     if (err) {
       return res.status(403).json({
         message: "Forbidden",
@@ -168,85 +217,4 @@ export async function getMe(req: Request, res: Response, next?: NextFunction) {
       data: user,
     });
   });
-}
-
-export async function register(
-  req: Request,
-  res: Response,
-  next?: NextFunction
-) {
-  const { name, email, password } = req.body;
-
-  if (!name || !email || !password) {
-    return res.status(400).json({
-      message: "Invalid input",
-      status: "failed",
-      code: 400,
-    });
-  }
-
-  let existingUser;
-  try {
-    existingUser = await getUserByEmail(email);
-  } catch (error) {
-    return res.status(500).json({
-      message: "Signup failed, please try again later.",
-      status: "failed",
-      code: 500,
-    });
-  }
-
-  if (existingUser) {
-    return res.status(422).json({
-      message: "User exists already, please login instead.",
-      status: "failed",
-      code: 422,
-    });
-  }
-
-  const newUser = await createUser(name, email, password);
-
-  let token;
-  let refreshToken;
-  try {
-    token = jwt.sign(
-      {
-        userId: newUser.id,
-        email: newUser.email,
-      },
-      process.env.JWT_KEY as string,
-      {
-        expiresIn: "1h",
-      }
-    );
-    refreshToken = jwt.sign(
-      {
-        userId: newUser.id,
-        email: newUser.email,
-      },
-      process.env.JWT_KEY as string,
-      {
-        expiresIn: "1h",
-      }
-    );
-  } catch (err) {
-    return res.status(500).json({
-      message: "Signup failed, please try again later.",
-      status: "failed",
-      code: 500,
-    });
-  }
-
-  res
-    .cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      sameSite: "strict",
-    })
-    .header("Authorization", `Bearer ${token}`)
-    .status(201)
-    .json({
-      userId: newUser.id,
-      email: newUser.email,
-      token,
-    });
 }

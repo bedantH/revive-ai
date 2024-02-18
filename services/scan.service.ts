@@ -9,7 +9,8 @@ import {
 } from "../controllers/scan.controller";
 
 export async function completeScan(req: Request, res: Response) {
-  const { id, how_desc } = req.body;
+  const id = req.params.id;
+  const { how_desc } = req.body;
 
   if (!id || !how_desc) {
     return res.status(400).json({
@@ -60,7 +61,7 @@ export async function completeScan(req: Request, res: Response) {
 }
 
 export async function createScanService(req: Request, res: Response) {
-  const { userId, object, result } = req.body;
+  const { userId, object, result, is_completed, how_desc } = req.body;
 
   if (!userId || !object || !result) {
     return res.status(400).json({
@@ -72,12 +73,13 @@ export async function createScanService(req: Request, res: Response) {
 
   let scan;
   try {
-    scan = await createScan(userId, object, result);
+    scan = await createScan(userId, object, result, is_completed, how_desc);
   } catch (err) {
     return res.status(500).json({
       message: "Creating scan failed, please try again later.",
       status: "failed",
       code: 500,
+      err: err,
     });
   }
 

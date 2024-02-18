@@ -1,7 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { config } from "dotenv";
+
+config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-let location = "Panvel, Maharashtra";
 
 export function fileToGenerativePart(
   image: string,
@@ -45,8 +47,16 @@ export async function getTextResponse(
         try to keep the output below 4000 letters
   `;
 
-  const result = await model.generateContent([prompt, ...imageParts]);
-  const response = await result.response;
+  let result;
+  let response;
+  try {
+    result = await model.generateContent([prompt, ...imageParts]);
+    response = await result.response;
+  } catch (err) {
+    console.log(err);
+    return "Error in generating response";
+  }
+
   let text = response
     .text()
     .replace("```", "")

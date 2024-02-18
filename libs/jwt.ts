@@ -9,7 +9,7 @@ export async function authenticate(
   res: Response,
   next: NextFunction
 ) {
-  const token = req.headers.authorization;
+  const token = req.cookies?.token;
 
   if (!token) {
     return res.status(401).json({
@@ -20,8 +20,8 @@ export async function authenticate(
   }
 
   try {
-    const decoded: any = verify(token, process.env.JWT_SECRET!);
-    const user = await User.findById(decoded.id).exec();
+    const decoded: any = verify(token, process.env.JWT_KEY as string);
+    const user = await User.findById(decoded?.user._id).exec();
 
     if (!user) {
       return res.status(401).json({

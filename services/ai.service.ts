@@ -8,8 +8,6 @@ export async function getAIResponseAll(req: Request, res: Response) {
 
   getTextResponse(location, image, mimeType)
     .then((data) => {
-      console.log(data);
-
       res.status(200).json({
         message: "Response fetched successfully",
         status: "success",
@@ -18,6 +16,7 @@ export async function getAIResponseAll(req: Request, res: Response) {
       });
     })
     .catch((err) => {
+      console.log(err);
       res.status(503).json({
         message: err,
         status: "failed",

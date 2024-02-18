@@ -1,4 +1,5 @@
 import User from "../models/user.model";
+import bcrypt from "bcrypt";
 
 export async function createUser(
   name: string,
@@ -8,7 +9,7 @@ export async function createUser(
   const user = new User({
     name,
     email,
-    password,
+    password: bcrypt.hashSync(password, bcrypt.genSaltSync(10)),
   });
 
   return user.save();

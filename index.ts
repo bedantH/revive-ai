@@ -1,7 +1,7 @@
 import express, { Express, NextFunction, Request, Response } from "express";
 import dotenv from "dotenv";
 import bodyParser from "body-parser";
-import { getMe, refresh, register } from "./services/auth.service";
+import { getMe, login, refresh, register } from "./services/auth.service";
 import { getAIResponseAll, getAllLocationsNearby } from "./services/ai.service";
 import {
   completeScan,
@@ -9,6 +9,9 @@ import {
   getScanByIdService,
   getScansByUserIdService,
 } from "./services/scan.service";
+import mongoose from "mongoose";
+import { authenticate } from "./libs/jwt";
+import cookies from "cookie-parser";
 
 const app: Express = express();
 app.use(
@@ -16,6 +19,7 @@ app.use(
     limit: "100mb",
   })
 );
+app.use(cookies());
 dotenv.config();
 
 const PORT = process.env.PORT || 3000;
@@ -40,40 +44,47 @@ app.post("/ai/response/locations", async (req: Request, res: Response) => {
   await getAllLocationsNearby(req, res);
 });
 
-app.post(
-  "/login",
-  async (req: Request, res: Response, next: NextFunction) => {}
-);
-
-app.post("/signup", async (req: Request, res: Response) => {
-  register(req, res);
+app.post("/login", async (req: Request, res: Response, next: NextFunction) => {
+  await login(req, res, next);
 });
 
-app.get("/me", async (req: Request, res: Response) => {
+app.post("/register", async (req: Request, res: Response) => {
+  await register(req, res);
+});
+
+app.get("/me", authenticate, async (req: Request, res: Response) => {
   await getMe(req, res);
 });
 
 // refresh token
-app.post("/refresh", async (req, res) => {
+app.post("/refresh", authenticate, async (req, res) => {
   await refresh(req, res);
 });
 
 // scan routes
-app.post("/scan", async (req: Request, res: Response) => {
+app.post("/scan", authenticate, async (req: Request, res: Response) => {
   await createScanService(req, res);
 });
 
-app.get("/scan/:id", async (req: Request, res: Response) => {
+app.get("/scan/:id", authenticate, async (req: Request, res: Response) => {
   await getScanByIdService(req, res);
 });
 
-app.get("/scan/user/:userId", async (req: Request, res: Response) => {
-  await getScansByUserIdService(req, res);
-});
+app.get(
+  "/scan/user/:userId",
+  authenticate,
+  async (req: Request, res: Response) => {
+    await getScansByUserIdService(req, res);
+  }
+);
 
-app.post("/scan/:id/complete", async (req: Request, res: Response) => {
-  await completeScan(req, res);
-});
+app.post(
+  "/scan/:id/complete",
+  authenticate,
+  async (req: Request, res: Response) => {
+    await completeScan(req, res);
+  }
+);
 
 /* -------------------------------------------------------------------------- */
 /*                                Error Handler                               */
@@ -87,6 +98,15 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is at http://localhost:${PORT}/`);
-});
+mongoose
+  .connect(process.env.MONGO_URI as string)
+  .then(() => {
+    console.log("Connected to MongoDB");
+
+    app.listen(PORT, () => {
+      console.log(`Server is at http://localhost:${PORT}/`);
+    });
+  })
+  .catch((err) => {
+    console.error("MongoDB Err: ", err);
+  });
