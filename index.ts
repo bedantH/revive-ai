@@ -1,7 +1,14 @@
-import express, { Express, Request, Response } from "express";
+import express, { Express, NextFunction, Request, Response } from "express";
 import dotenv from "dotenv";
-import { getNearestStations, getTextResponse } from "./libs/gen-ai";
 import bodyParser from "body-parser";
+import { getMe, refresh, register } from "./services/auth.service";
+import { getAIResponseAll, getAllLocationsNearby } from "./services/ai.service";
+import {
+  completeScan,
+  createScanService,
+  getScanByIdService,
+  getScansByUserIdService,
+} from "./services/scan.service";
 
 const app: Express = express();
 app.use(
@@ -25,51 +32,59 @@ app.get("/", (req: Request, res: Response) => {
   An endpoint to get the response from the AI model and return it as a JSON response
 */
 
-app.post("/ai/response/all", (req: Request, res: Response) => {
-  const location: string = req.body.location;
-  const image: string = req.body.image;
-  const mimeType: string = req.body.mimeType;
-
-  getTextResponse(location, image, mimeType)
-    .then((data) => {
-      console.log(data);
-
-      res.status(200).json({
-        message: "Response fetched successfully",
-        status: "success",
-        code: 200,
-        data,
-      });
-    })
-    .catch((err) => {
-      res.status(503).json({
-        message: err,
-        status: "failed",
-        code: 503,
-      });
-    });
+app.post("/ai/response/all", async (req: Request, res: Response) => {
+  await getAIResponseAll(req, res);
 });
 
-app.post("/ai/response/locations", (req: Request, res: Response) => {
-  const location = req.body.location;
+app.post("/ai/response/locations", async (req: Request, res: Response) => {
+  await getAllLocationsNearby(req, res);
+});
 
-  getNearestStations(location)
-    .then((stationsData) => {
-      res.status(200).json({
-        message: "Response fetched successfully",
-        status: "success",
-        code: 200,
-        data: stationsData,
-      });
-    })
-    .catch((err) => {
-      res.status(503).json({
-        message: `Couldn't find any locations near ${location}`,
-        status: "failed",
-        code: 503,
-        data: err,
-      });
-    });
+app.post(
+  "/login",
+  async (req: Request, res: Response, next: NextFunction) => {}
+);
+
+app.post("/signup", async (req: Request, res: Response) => {
+  register(req, res);
+});
+
+app.get("/me", async (req: Request, res: Response) => {
+  await getMe(req, res);
+});
+
+// refresh token
+app.post("/refresh", async (req, res) => {
+  await refresh(req, res);
+});
+
+// scan routes
+app.post("/scan", async (req: Request, res: Response) => {
+  await createScanService(req, res);
+});
+
+app.get("/scan/:id", async (req: Request, res: Response) => {
+  await getScanByIdService(req, res);
+});
+
+app.get("/scan/user/:userId", async (req: Request, res: Response) => {
+  await getScansByUserIdService(req, res);
+});
+
+app.post("/scan/:id/complete", async (req: Request, res: Response) => {
+  await completeScan(req, res);
+});
+
+/* -------------------------------------------------------------------------- */
+/*                                Error Handler                               */
+/* -------------------------------------------------------------------------- */
+
+app.use((req: Request, res: Response) => {
+  res.status(404).json({
+    message: "Not Found",
+    status: "failed",
+    code: 404,
+  });
 });
 
 app.listen(PORT, () => {
