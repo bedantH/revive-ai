@@ -40,9 +40,9 @@ export async function getTextResponse(
         Include step-by-step descriptive and detailed instructions for each method.
         Find and list details of the nearest recycling stations in ${location}
     Format: JSON response with specific fields:
-        recycling_methods: Name and detailed steps for each recycling method and also add necessary and related links in resources array. (steps should only be array of strings) (2 methods)
-        reusing_methods: Name and steps for each reusing method and also add resources array which can contains some tutorial videos links on how to do it. (2 methods)
-        nearest_recycling_stations: Name, address, distance, contact, and map link for each station.
+        object: Name of the object in the image
+        recycling_methods: Name and detailed steps for each recycling method
+        reusing_methods: Name and steps for each reusing method
 
         try to keep the output below 4000 letters
   `;

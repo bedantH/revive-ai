@@ -12,11 +12,12 @@ import {
 import mongoose from "mongoose";
 import { authenticate } from "./libs/jwt";
 import cookies from "cookie-parser";
+import axios from "axios";
 
 const app: Express = express();
 app.use(
   bodyParser.json({
-    limit: "100mb",
+    limit: "200mb",
   })
 );
 app.use(cookies());
@@ -77,6 +78,29 @@ app.get(
     await getScansByUserIdService(req, res);
   }
 );
+
+app.get("/search", async (req, res) => {
+  try {
+    const apiKey = "AIzaSyBwfsoIP2n5mYQAauWVrLkRQcul_odtGSs";
+    const query = req.query.q; // Retrieve the query parameter from the request
+    const response = await axios.get(
+      "https://www.googleapis.com/youtube/v3/search",
+      {
+        params: {
+          key: apiKey,
+          q: query,
+          part: "snippet",
+          type: "video",
+          maxResults: 10, // You can adjust this value as needed
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    console.error("Error fetching data from YouTube API:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 app.post(
   "/scan/:id/complete",
